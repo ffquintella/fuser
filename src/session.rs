@@ -84,6 +84,17 @@ impl<FS: Filesystem> Session<FS> {
     ) -> io::Result<Session<FS>> {
         let mountpoint = mountpoint.as_ref();
         info!("Mounting {}", mountpoint.display());
+
+        // macFUSE's libfuse3 doesn't support auto_unmount, so filter it out early
+        #[cfg(all(target_os = "macos", fuser_mount_impl = "libfuse3"))]
+        let options: Vec<MountOption> = options
+            .iter()
+            .filter(|o| !matches!(o, MountOption::AutoUnmount))
+            .cloned()
+            .collect();
+        #[cfg(all(target_os = "macos", fuser_mount_impl = "libfuse3"))]
+        let options = options.as_slice();
+
         // If AutoUnmount is requested, but not AllowRoot or AllowOther we enforce the ACL
         // ourself and implicitly set AllowOther because fusermount needs allow_root or allow_other
         // to handle the auto_unmount option

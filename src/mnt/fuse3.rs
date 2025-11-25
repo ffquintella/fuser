@@ -67,7 +67,7 @@ impl Mount {
 }
 impl Drop for Mount {
     fn drop(&mut self) {
-        use std::io::ErrorKind::PermissionDenied;
+        use std::io::ErrorKind::{InvalidInput, PermissionDenied};
 
         if let Err(err) = super::libc_umount(&self.mountpoint) {
             // Linux always returns EPERM for non-root users.  We have to let the
@@ -79,6 +79,13 @@ impl Drop for Mount {
                     fuse_session_destroy(self.fuse_session);
                     return;
                 }
+            }
+            // macOS returns EINVAL when the filesystem is already unmounted
+            // (e.g., via diskutil). This is expected behavior, so only log at debug level.
+            #[cfg(target_os = "macos")]
+            if err.kind() == InvalidInput {
+                log::debug!("umount returned EINVAL (filesystem likely already unmounted)");
+                return;
             }
             warn!("umount failed with {err:?}");
         }
