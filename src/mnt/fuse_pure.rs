@@ -126,19 +126,43 @@ fn fuse_unmount_pure(mountpoint: &CStr) {
 }
 
 fn detect_fusermount_bin() -> String {
-    for name in [
+    // macOS: use mount_macfuse from macFUSE installation
+    #[cfg(target_os = "macos")]
+    const MACFUSE_MOUNT_BIN: &str =
+        "/Library/Filesystems/macfuse.fs/Contents/Resources/mount_macfuse";
+
+    #[cfg(target_os = "macos")]
+    let candidates = [
+        MACFUSE_MOUNT_BIN.to_string(),
         FUSERMOUNT3_BIN.to_string(),
         FUSERMOUNT_BIN.to_string(),
         format!("/bin/{FUSERMOUNT3_BIN}"),
         format!("/bin/{FUSERMOUNT_BIN}"),
-    ]
-    .iter()
-    {
-        if Command::new(name).arg("-h").output().is_ok() {
+    ];
+
+    #[cfg(not(target_os = "macos"))]
+    let candidates = [
+        FUSERMOUNT3_BIN.to_string(),
+        FUSERMOUNT_BIN.to_string(),
+        format!("/bin/{FUSERMOUNT3_BIN}"),
+        format!("/bin/{FUSERMOUNT_BIN}"),
+    ];
+
+    for name in candidates.iter() {
+        // macOS mount_macfuse uses -V for version, Linux fusermount uses -h for help
+        #[cfg(target_os = "macos")]
+        let check_arg = "-V";
+        #[cfg(not(target_os = "macos"))]
+        let check_arg = "-h";
+
+        if Command::new(name).arg(check_arg).output().is_ok() {
             return name.to_string();
         }
     }
-    // Default to fusermount3
+    // Default to fusermount3 on Linux, mount_macfuse on macOS
+    #[cfg(target_os = "macos")]
+    return MACFUSE_MOUNT_BIN.to_string();
+    #[cfg(not(target_os = "macos"))]
     FUSERMOUNT3_BIN.to_string()
 }
 
