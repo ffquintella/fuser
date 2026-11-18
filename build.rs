@@ -11,27 +11,21 @@ fn main() {
     if target_os == "linux" && cfg!(not(feature = "libfuse")) {
         println!("cargo:rustc-cfg=fuser_mount_impl=\"pure-rust\"");
     } else if target_os == "macos" {
-        // macFUSE 5.x provides libfuse3 which is required for FSKit support.
-        // Try libfuse3 first, fall back to libfuse2 (macFUSE 4.x) if not available.
-        if pkg_config::Config::new()
-            .atleast_version("3.0.0")
-            .probe("fuse3")
-            .map_err(|e| eprintln!("libfuse3 not found: {e}"))
-            .is_ok()
-        {
-            println!("cargo:rustc-cfg=fuser_mount_impl=\"libfuse3\"");
-            // macFUSE 5.x with libfuse3 still needs macfuse-4-compat for some APIs
-            println!("cargo:rustc-cfg=feature=\"macfuse-4-compat\"");
-        } else {
-            // Fallback to libfuse2 (macFUSE 4.x)
-            pkg_config::Config::new()
-                .atleast_version("2.6.0")
-                .probe("fuse") // for macFUSE 4.x
-                .map_err(|e| eprintln!("{e}"))
-                .unwrap();
-            println!("cargo:rustc-cfg=fuser_mount_impl=\"libfuse2\"");
-            println!("cargo:rustc-cfg=feature=\"macfuse-4-compat\"");
-        }
+        // macOS uses FUSE-T (https://www.fuse-t.org/): an NFS-based, kext-less FUSE
+        // implementation that ships a libfuse2-compatible library and a `fuse-t.pc`
+        // pkg-config file. It keeps macFUSE's wire layout, hence `macfuse-4-compat`.
+        pkg_config::Config::new()
+            .atleast_version("1.0.0")
+            .probe("fuse-t")
+            .map_err(|e| {
+                eprintln!(
+                    "FUSE-T not found via pkg-config: {e}\n\
+                     Install it with: brew install --cask macos-fuse-t/homebrew-cask/fuse-t"
+                )
+            })
+            .unwrap();
+        println!("cargo:rustc-cfg=fuser_mount_impl=\"libfuse2\"");
+        println!("cargo:rustc-cfg=feature=\"macfuse-4-compat\"");
     } else {
         // First try to link with libfuse3
         if pkg_config::Config::new()
