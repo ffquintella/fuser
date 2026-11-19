@@ -13,7 +13,8 @@ fn main() {
     } else if target_os == "macos" {
         // macOS uses FUSE-T (https://www.fuse-t.org/): an NFS-based, kext-less FUSE
         // implementation that ships a libfuse2-compatible library and a `fuse-t.pc`
-        // pkg-config file. It keeps macFUSE's wire layout, hence `macfuse-4-compat`.
+        // pkg-config file. Its libfuse2 profile uses the plain 8-byte `fuse_rename_in`, so
+        // `macfuse-4-compat` (16 bytes) must NOT be enabled: it shifts the source name by 8 bytes.
         pkg_config::Config::new()
             .atleast_version("1.0.0")
             .probe("fuse-t")
@@ -25,7 +26,6 @@ fn main() {
             })
             .unwrap();
         println!("cargo:rustc-cfg=fuser_mount_impl=\"libfuse2\"");
-        println!("cargo:rustc-cfg=feature=\"macfuse-4-compat\"");
     } else {
         // First try to link with libfuse3
         if pkg_config::Config::new()
