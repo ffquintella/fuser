@@ -85,14 +85,15 @@ impl<FS: Filesystem> Session<FS> {
         let mountpoint = mountpoint.as_ref();
         info!("Mounting {}", mountpoint.display());
 
-        // macFUSE's libfuse3 doesn't support auto_unmount, so filter it out early
-        #[cfg(all(target_os = "macos", fuser_mount_impl = "libfuse3"))]
+        // FUSE-T (and macFUSE's libfuse3) don't support auto_unmount; FUSE-T drops the
+        // connection right after mounting if it is passed, so filter it out early
+        #[cfg(target_os = "macos")]
         let options: Vec<MountOption> = options
             .iter()
             .filter(|o| !matches!(o, MountOption::AutoUnmount))
             .cloned()
             .collect();
-        #[cfg(all(target_os = "macos", fuser_mount_impl = "libfuse3"))]
+        #[cfg(target_os = "macos")]
         let options = options.as_slice();
 
         // If AutoUnmount is requested, but not AllowRoot or AllowOther we enforce the ACL

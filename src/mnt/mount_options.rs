@@ -11,6 +11,8 @@ pub enum MountOption {
     FSName(String),
     /// Set the filesystem subtype in mtab
     Subtype(String),
+    /// Request macFUSE FSKit backend (macOS; maps to `-o backend=fskit`)
+    BackendFsKit,
     /// Allows passing an option which is not otherwise supported in these enums
     #[allow(clippy::upper_case_acronyms)]
     CUSTOM(String),
@@ -79,6 +81,7 @@ impl MountOption {
             "dirsync" => MountOption::DirSync,
             "sync" => MountOption::Sync,
             "async" => MountOption::Async,
+            "backend=fskit" => MountOption::BackendFsKit,
             x if x.starts_with("fsname=") => MountOption::FSName(x[7..].into()),
             x if x.starts_with("subtype=") => MountOption::Subtype(x[8..].into()),
             x => MountOption::CUSTOM(x.into()),
@@ -105,6 +108,7 @@ fn conflicts_with(option: &MountOption) -> Vec<MountOption> {
     match option {
         MountOption::FSName(_)
         | MountOption::Subtype(_)
+        | MountOption::BackendFsKit
         | MountOption::CUSTOM(_)
         | MountOption::DirSync
         | MountOption::AutoUnmount
@@ -131,6 +135,7 @@ pub fn option_to_string(option: &MountOption) -> String {
     match option {
         MountOption::FSName(name) => format!("fsname={name}"),
         MountOption::Subtype(subtype) => format!("subtype={subtype}"),
+        MountOption::BackendFsKit => "backend=fskit".to_string(),
         MountOption::CUSTOM(value) => value.to_string(),
         MountOption::AutoUnmount => "auto_unmount".to_string(),
         MountOption::AllowRoot |

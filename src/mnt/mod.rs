@@ -33,9 +33,9 @@ fn with_fuse_args<T, F: FnOnce(&fuse_args) -> T>(options: &[MountOption], f: F) 
 
     let mut args = vec![CString::new("rust-fuse").unwrap()];
     for x in options {
-        // macFUSE's libfuse3 doesn't support auto_unmount - skip it on macOS with libfuse3
+        // FUSE-T/macFUSE don't support auto_unmount - skip it on macOS
         // Note: This should already be filtered in session.rs, but we keep this as a safety net
-        #[cfg(all(target_os = "macos", fuser_mount_impl = "libfuse3"))]
+        #[cfg(target_os = "macos")]
         if matches!(x, MountOption::AutoUnmount) {
             continue;
         }
